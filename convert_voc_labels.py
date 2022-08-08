@@ -2,7 +2,11 @@
 
 Converts annotations from VOC to YOLO format. By YOLO format I mean a txt file for each
 image with a line for each ground truth object in the image that looks like:
-<object-class> <x> <y> <width> <height>
+<object-class> <x> <y> <w> <h>
+Where <object-class> is the index of the class (see voc_classes.txt), <x> and <y> are 
+coordinates of the center of bounding box, <w> and <h> are width and height of the
+bounding box. <x>, <y>, <w>, <h> are normalized by the image width and height so that
+they fall between 0 and 1.
 
 Also creates a txt file for each image set (e.g. voc2007_train.txt) in which each line 
 looks like:
