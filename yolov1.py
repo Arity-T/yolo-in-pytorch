@@ -43,7 +43,9 @@ class Dataset(BaseDataset):
             img_set (list of strings): List of pathes to files with pathes to images and
                 annotations (see convert_voc_labels.py).
             augmentations (callable, optional): Albumentations augmentation pipeline or
-                custom function/transform with same interface.
+                custom function/transform with same interface. When using albumentations
+                Compose, pass albumentations.BboxParams("yolo", label_fields=["labels"]))
+                as bbox_params argument of Compose.
             transforms (callable, optional): A function/transform that takes in an numpy
                 array and returns a transformed version.
             grid_size (int, optional): YOLO hyperparameter (see paper for details).
