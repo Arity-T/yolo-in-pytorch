@@ -1,4 +1,5 @@
 import cv2
+import torch.nn as nn
 from torch.utils.data import Dataset as BaseDataset
 
 
@@ -105,3 +106,106 @@ class Dataset(BaseDataset):
             img = self.transforms(img)
 
         return img, {"bboxes": bboxes, "labels": labels}
+
+
+def add_activations(model, activation, *args, **kwargs):
+    """Adds activation functions after all torch.nn.Conv2d layers
+
+    Args:
+        model (torch.nn.Sequential or list): A convolution model or a list of its layers
+            to which activation functions should be added
+        activation: An activation function that will be initialized with the given
+            parameters and added to the model layers, e.g. torch.nn.LeakyReLU
+        *args: Positional arguments to initialize the activation function
+        **kwargs: Keyword arguments to initialize the activation function
+    Returns:
+        torch.nn.Sequential: A new model
+    """
+    new_model = []
+
+    for l in model:
+        new_model.append(l)
+
+        if isinstance(l, nn.Conv2d):
+            new_model.append(activation(*args, **kwargs))
+
+    return nn.Sequential(*new_model)
+
+
+class Backbone(nn.Module):
+    def __init__(self):
+        """Original YOLOv1 backbone"""
+        super().__init__()
+
+        self.layers = [
+            nn.Conv2d(3, 64, 7, 2, 3),
+            nn.MaxPool2d(2, 2),
+            nn.Conv2d(64, 192, 3, 1, 1),
+            nn.MaxPool2d(2, 2),
+            nn.Conv2d(192, 128, 1, 1, 0),
+            nn.Conv2d(128, 256, 3, 1, 1),
+            nn.Conv2d(256, 256, 1, 1, 0),
+            nn.Conv2d(256, 512, 3, 1, 1),
+            nn.MaxPool2d(2, 2),
+            nn.Conv2d(512, 256, 1, 1, 0),
+            nn.Conv2d(256, 512, 3, 1, 1),
+            nn.Conv2d(512, 256, 1, 1, 0),
+            nn.Conv2d(256, 512, 3, 1, 1),
+            nn.Conv2d(512, 256, 1, 1, 0),
+            nn.Conv2d(256, 512, 3, 1, 1),
+            nn.Conv2d(512, 256, 1, 1, 0),
+            nn.Conv2d(256, 512, 3, 1, 1),
+            nn.Conv2d(512, 256, 1, 1, 0),
+            nn.Conv2d(256, 1024, 3, 1, 1),
+            nn.MaxPool2d(2, 2),
+            nn.Conv2d(1024, 512, 1, 1, 0),
+            nn.Conv2d(512, 1024, 3, 1, 1),
+            nn.Conv2d(1024, 512, 1, 1, 0),
+            nn.Conv2d(512, 1024, 3, 1, 1),
+            nn.Conv2d(1024, 1024, 3, 1, 1),
+            nn.Conv2d(1024, 1024, 3, 2, 1),
+            nn.Conv2d(1024, 1024, 3, 1, 1),
+            nn.Conv2d(1024, 1024, 3, 1, 1),
+        ]
+
+        self.layers = add_activations(self.layers, nn.LeakyReLU, negative_slope=0.1)
+
+    def forward(self, batch):
+        return self.layers(batch)
+
+
+class Model(nn.Module):
+    def __init__(
+        self, backbone=None, grid_size=7, number_of_bboxes=2, number_of_classes=20
+    ):
+        """Creates YOLOv1 model
+
+        Args:
+            backbone (callable, optional): Backbone model. If not specified default
+                backbone will be used (see Figure 3 in paper for details)
+            grid_size (int, optional): YOLO hyperparameter (see paper for details).
+                Defaults to 7
+            number_of_bboxes (int, optional): Number of bounding boxes to predict per
+                grid cell. Defaults to 2
+            number_of_classes (int, optional): Number of classes. Defaults to 20
+        """
+        super().__init__()
+        self.grid_size = grid_size
+        self.preds_per_cell = number_of_bboxes * 5 + number_of_classes
+
+        self.backbone = backbone if backbone else Backbone()
+
+        self.fc_layers = nn.Sequential(
+            nn.Flatten(),
+            nn.Linear(grid_size * grid_size * 1024, 4096),
+            nn.LeakyReLU(0.1),
+            nn.Dropout(0.5),
+            nn.Linear(4096, grid_size * grid_size * self.preds_per_cell),
+            nn.LeakyReLU(0.1),
+        )
+
+    def forward(self, batch):
+        batch = self.backbone(batch)
+        batch = self.fc_layers(batch)
+        batch = batch.reshape(-1, self.grid_size, self.grid_size, self.preds_per_cell)
+        return batch
