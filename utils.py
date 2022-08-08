@@ -6,7 +6,7 @@ import torch
 
 
 def bbox_to_corners(bbox, img_width, img_height):
-    """Converts bbox from YOLO to VOC format"""
+    """Converts bbox from YOLO to VOC format."""
     x, y, w, h = bbox
 
     x_min = int((x - w / 2) * img_width)
@@ -18,7 +18,7 @@ def bbox_to_corners(bbox, img_width, img_height):
 
 
 def img_to_numpy(img):
-    """Converts img to opencv and matplotlib compitable format"""
+    """Converts img to opencv and matplotlib compitable format."""
     if isinstance(img, torch.Tensor):
         img = img.cpu().detach().numpy()
 
@@ -34,13 +34,13 @@ def img_to_numpy(img):
 
 
 def to_color(obj):
-    """Converts any serializable object to color tuple"""
+    """Converts any serializable object to color tuple."""
     h = md5(str(obj).encode()).hexdigest()
     return (int(h[:2], 16), int(h[2:4], 16), int(h[4:6], 16))
 
 
 def put_text(img, text, x, y, bg_color, left_top_origin=True):
-    """Draws text with backgroung on copy of the input image and returns it"""
+    """Draws text with backgroung on copy of the input image and returns it."""
     img = img.copy()
 
     text_params = {
@@ -69,7 +69,7 @@ def put_text(img, text, x, y, bg_color, left_top_origin=True):
 
 
 def draw_bboxes(img, bboxes, labels=None):
-    """Draws bounding boxes and labels on copy of the input image and returns it"""
+    """Draws bounding boxes and labels on copy of the input image and returns it."""
     img = img_to_numpy(img).copy()
 
     for i, bbox in enumerate(bboxes):

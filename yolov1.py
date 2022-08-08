@@ -10,7 +10,7 @@ def read_annot_file(path):
     <object-class> <x> <y> <width> <height>
 
     Args:
-        path (str): Path to the file
+        path (str): Path to the file.
 
     Returns:
         tuple: (list of class labels, list of bboxes)
@@ -41,18 +41,18 @@ class Dataset(BaseDataset):
 
         Args:
             img_set (list of strings): List of pathes to files with pathes to images and
-                annotations (see convert_voc_labels.py)
+                annotations (see convert_voc_labels.py).
             augmentations (callable, optional): Albumentations augmentation pipeline or
-                custom function/transform with same interface
+                custom function/transform with same interface.
             transforms (callable, optional): A function/transform that takes in an numpy
-                array and returns a transformed version
+                array and returns a transformed version.
             grid_size (int, optional): YOLO hyperparameter (see paper for details).
-                Defaults to 7
+                Defaults to 7.
             number_of_classes (int, optional): Number of classes in dataset.
-                Defaults to 20
-            read_annots_once (bool, optional): If True loads annotations in RAM during
-                dataset initialization. Otherwise reads annotation file  every time
-                __getitem__ is called. Defaults to True
+                Defaults to 20.
+            read_annots_once (bool, optional): If set to True loads annotations in RAM
+                during dataset initialization. Otherwise reads annotation file every
+                time __getitem__ is called. Defaults to True.
         """
         self.augmentations = augmentations
         self.transforms = transforms
@@ -80,11 +80,11 @@ class Dataset(BaseDataset):
                         self.annot_pathes.append(splitted_line[1])
 
     def __len__(self):
-        """Returns number of images in dataset"""
+        """Returns number of images in dataset."""
         return len(self.img_pathes)
 
     def __getitem__(self, index):
-        """Returns image after transforms and corresponding grid"""
+        """Returns image after transforms and corresponding grid."""
         # Read image
         img = cv2.cvtColor(cv2.imread(self.img_pathes[index]), cv2.COLOR_BGR2RGB)
 
@@ -109,17 +109,17 @@ class Dataset(BaseDataset):
 
 
 def add_activations(model, activation, *args, **kwargs):
-    """Adds activation functions after all torch.nn.Conv2d layers
+    """Adds activation functions after all torch.nn.Conv2d layers.
 
     Args:
         model (torch.nn.Sequential or list): A convolution model or a list of its layers
-            to which activation functions should be added
+            to which activation functions should be added.
         activation: An activation function that will be initialized with the given
-            parameters and added to the model layers, e.g. torch.nn.LeakyReLU
-        *args: Positional arguments to initialize the activation function
-        **kwargs: Keyword arguments to initialize the activation function
+            parameters and added to the model layers, e.g. torch.nn.LeakyReLU.
+        *args: Positional arguments to initialize the activation function.
+        **kwargs: Keyword arguments to initialize the activation function.
     Returns:
-        torch.nn.Sequential: A new model
+        torch.nn.Sequential: New model.
     """
     new_model = []
 
@@ -134,7 +134,7 @@ def add_activations(model, activation, *args, **kwargs):
 
 class Backbone(nn.Module):
     def __init__(self):
-        """Original YOLOv1 backbone"""
+        """Original YOLOv1 backbone."""
         super().__init__()
 
         self.layers = [
@@ -178,16 +178,16 @@ class Model(nn.Module):
     def __init__(
         self, backbone=None, grid_size=7, number_of_bboxes=2, number_of_classes=20
     ):
-        """Creates YOLOv1 model
+        """Creates YOLOv1 model.
 
         Args:
             backbone (callable, optional): Backbone model. If not specified default
-                backbone will be used (see Figure 3 in paper for details)
+                backbone will be used (see Figure 3 in paper for details).
             grid_size (int, optional): YOLO hyperparameter (see paper for details).
-                Defaults to 7
+                Defaults to 7.
             number_of_bboxes (int, optional): Number of bounding boxes to predict per
-                grid cell. Defaults to 2
-            number_of_classes (int, optional): Number of classes. Defaults to 20
+                grid cell. Defaults to 2.
+            number_of_classes (int, optional): Number of classes. Defaults to 20.
         """
         super().__init__()
         self.grid_size = grid_size

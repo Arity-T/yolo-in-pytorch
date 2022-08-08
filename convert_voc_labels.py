@@ -1,4 +1,4 @@
-"""Copied from https://pjreddie.com/media/files/voc_label.py with some changes
+"""Copied from https://pjreddie.com/media/files/voc_label.py with some changes.
 
 Converts annotations from VOC to YOLO format. By YOLO format I mean a txt file for each
 image with a line for each ground truth object in the image that looks like:
