@@ -1,6 +1,7 @@
 import cv2
 import torch.nn as nn
 from torch.utils.data import Dataset as BaseDataset
+from torch.utils.data import default_collate
 
 
 def read_annot_file(path):
@@ -25,6 +26,12 @@ def read_annot_file(path):
             bboxes.append([float(bbox_param) for bbox_param in line[1:5]])
 
     return labels, bboxes
+
+
+def collate_fn(batch):
+    """Pass this function as collate_fn argument of the DataLoader"""
+    images, annotations = zip(*batch)
+    return default_collate(images), annotations
 
 
 class Dataset(BaseDataset):
@@ -86,7 +93,7 @@ class Dataset(BaseDataset):
         return len(self.img_pathes)
 
     def __getitem__(self, index):
-        """Returns image after transforms and corresponding grid."""
+        """Returns image after transforms and corresponding annotations."""
         # Read image
         img = cv2.cvtColor(cv2.imread(self.img_pathes[index]), cv2.COLOR_BGR2RGB)
 
