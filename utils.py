@@ -5,6 +5,32 @@ import numpy as np
 import torch
 
 
+@torch.no_grad()
+def iou(bbox1, bbox2):
+    """Calculates Intersection Over Union for two bounding boxes in YOLO format."""
+    x1, y1, w1, h1 = bbox1
+    x2, y2, w2, h2 = bbox2
+
+    if w1 < 0 or h1 < 0 or w2 < 0 or h2 < 0:
+        return 0
+
+    x_left = max(x1 - w1 / 2, x2 - w2 / 2)
+    x_right = min(x1 + w1 / 2, x2 + w2 / 2)
+    y_top = max(y1 - h1 / 2, y2 - h2 / 2)
+    y_bottom = min(y1 + h1 / 2, y2 + h2 / 2)
+
+    if x_right < x_left or y_bottom < y_top:
+        return 0
+
+    intersection = (x_right - x_left) * (y_bottom - y_top)
+    union = w1 * h1 + w2 * h2 - intersection
+
+    if union == 0:
+        return 0
+
+    return intersection / union
+
+
 def bbox_to_corners(bbox, img_width, img_height):
     """Converts bbox from YOLO to VOC format."""
     x, y, w, h = bbox

@@ -1,7 +1,11 @@
 import cv2
+import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from torch.utils.data import Dataset as BaseDataset
 from torch.utils.data import default_collate
+
+import utils
 
 
 def read_annot_file(path):
@@ -218,3 +222,95 @@ class Model(nn.Module):
         batch = self.fc_layers(batch)
         batch = batch.reshape(-1, self.grid_size, self.grid_size, self.preds_per_cell)
         return batch
+
+
+class Loss(nn.Module):
+    def __init__(self, labmda_coord=5.0, labmda_noobj=0.5):
+        """Implementation of the original YOLOv1 loss function.
+
+        Args:
+            labmda_coord (float, optional): Coefficient for bounding box coordinate
+                predictions (see paper for details). Defaults to 5.
+            labmda_noobj (float, optional): Coefficient for confidence predictions for
+                bounding boxes that don't contain objects (see paper for details).
+                Defaults to 0.5.
+        """
+        super().__init__()
+
+        self.lambda_coord = labmda_coord
+        self.lambda_noobj = labmda_noobj
+
+    def forward(self, pred, gt):
+        """Calculates loss.
+
+        Args:
+            pred (torch.tensor): Tensor predicted by the model.
+            gt (list of dicts): List of ground truth bboxes with labels.
+
+        Returns:
+            torch.tensor: Tensor of size 1.
+        """
+        loss = 0
+        cell_size = 1 / pred.shape[1]
+
+        for ex_i in range(len(gt)):
+            cells_with_obj = []
+
+            for (x, y, w, h), label in zip(gt[ex_i]["bboxes"], gt[ex_i]["labels"]):
+                # Find grid cell responsible for predicting current bbox
+                row, col = int(x // cell_size), int(y // cell_size)
+
+                # Yolo can predict only one object per grid cell so some bboxes will not
+                # be taken into account
+                if (row, col) in cells_with_obj:
+                    continue
+
+                cells_with_obj.append((row, col))
+
+                # Predict coordinates relative to the bounds of the grid cell
+                x = x / cell_size - col
+                y = y / cell_size - row
+
+                # Predict the square root of the bounding box width and height
+                w **= 0.5
+                h **= 0.5
+
+                # Choose predicted bbox with the highest IOU with the ground truth
+                current_pred = pred[ex_i, row, col]
+                bbox1_iou = utils.iou(current_pred[:4], (x, y, w, h))
+                bbox2_iou = utils.iou(current_pred[5:9], (x, y, w, h))
+
+                pred_bbox = (
+                    current_pred[:5] if bbox1_iou > bbox2_iou else current_pred[5:10]
+                )
+
+                # Coordinates and size loss
+                loss += self.lambda_coord * F.mse_loss(
+                    pred_bbox[:4], torch.tensor([x, y, w, h]), reduction="sum"
+                )
+
+                print(loss)
+
+                # Confidence loss
+                loss += F.mse_loss(pred_bbox[4], torch.tensor(1))
+
+                print(loss)
+
+                # Classification loss
+                loss += F.mse_loss(
+                    current_pred[-20:],
+                    F.one_hot(torch.tensor(label), 20),
+                    reduction="sum",
+                )
+
+                print(loss)
+
+            # No object loss
+            confidence_preds = pred[ex_i][..., [4, 9]]
+            # Don't count no object loss for cells with objects
+            confidence_preds[cells_with_obj] *= 0
+            loss += self.lambda_noobj * F.mse_loss(
+                confidence_preds, torch.zeros_like(confidence_preds), reduction="sum"
+            )
+
+        return loss
