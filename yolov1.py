@@ -4,6 +4,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import Dataset as BaseDataset
 from torch.utils.data import default_collate
+from tqdm import tqdm
 
 import utils
 
@@ -78,8 +79,14 @@ class Dataset(BaseDataset):
         self.annotations = []
 
         for path_to_set in img_sets:
+            if read_annots_once:
+                print(f"Reading annnotations for {path_to_set} image set")
+
             with open(path_to_set) as image_set_file:
-                for line in image_set_file.read().strip().split("\n"):
+                for line in tqdm(
+                    image_set_file.read().strip().split("\n"),
+                    disable=(not read_annots_once),
+                ):
                     splitted_line = line.strip().split(" ")
                     assert len(splitted_line) == 2, (
                         f"Something went wrong during reading image set file '{path_to_set}'. "
