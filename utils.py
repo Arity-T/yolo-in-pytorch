@@ -97,8 +97,8 @@ def put_text(img, text, x, y, bg_color, left_top_origin=True):
     return img
 
 
-def draw_bboxes(img, bboxes, labels=None):
-    """Draws bounding boxes and labels on copy of the input image and returns it."""
+def draw_bboxes(img, bboxes, labels=None, scores=None):
+    """Draws bounding boxes, labels and confidence scores on copy of the input image."""
     img = img_to_numpy(img)
 
     for i, bbox in enumerate(bboxes):
@@ -110,6 +110,7 @@ def draw_bboxes(img, bboxes, labels=None):
         )
 
         if labels:
-            img = put_text(img, labels[i], x_min, y_min, bbox_color)
+            text = f"{labels[i]} {scores[i]:.2f}" if scores else labels[i]
+            img = put_text(img, text, x_min, y_min, bbox_color)
 
     return img
