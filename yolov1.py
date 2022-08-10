@@ -296,12 +296,8 @@ class Loss(nn.Module):
                     pred_bbox[:4], torch.tensor([x, y, w, h]), reduction="sum"
                 )
 
-                print(loss)
-
                 # Confidence loss
                 loss += F.mse_loss(pred_bbox[4], torch.tensor(1))
-
-                print(loss)
 
                 # Classification loss
                 loss += F.mse_loss(
@@ -309,8 +305,6 @@ class Loss(nn.Module):
                     F.one_hot(torch.tensor(label), 20),
                     reduction="sum",
                 )
-
-                print(loss)
 
             # No object loss
             confidence_preds = pred[ex_i][..., [4, 9]]
