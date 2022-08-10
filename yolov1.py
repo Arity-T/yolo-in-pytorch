@@ -211,6 +211,7 @@ class Model(nn.Module):
         """
         super().__init__()
         self.grid_size = grid_size
+        self.number_of_bboxes = number_of_bboxes
         self.preds_per_cell = number_of_bboxes * 5 + number_of_classes
 
         self.backbone = backbone if backbone else Backbone()
@@ -229,6 +230,69 @@ class Model(nn.Module):
         batch = self.fc_layers(batch)
         batch = batch.reshape(-1, self.grid_size, self.grid_size, self.preds_per_cell)
         return batch
+
+    @torch.no_grad()
+    def predict(self, batch, threshold=0.5):
+        self.eval()
+        predicted_grids = self(batch)
+
+        cell_size = 1 / self.grid_size
+        prediction = []
+
+        for grid in predicted_grids:
+            current_pred = {
+                "bboxes": [],
+                "labels": [],
+                "class_scores": [],
+                "bbox_scores": [],
+            }
+
+            for row in range(grid.shape[0]):
+                for col in range(grid.shape[1]):
+                    cell = grid[row, col]
+
+                    # Find prediction with the highest confidence
+                    max_conf_bbox = None
+                    for bbox_i in range(self.number_of_bboxes):
+                        if (
+                            max_conf_bbox is None
+                            or cell[(bbox_i + 1) * 5 - 1] > max_conf_bbox[-1]
+                        ):
+                            max_conf_bbox = cell[bbox_i * 5 : (bbox_i + 1) * 5]
+
+                    # Skip empty cells
+                    if max_conf_bbox[-1] < threshold:
+                        continue
+
+                    # Normalize bounding box parameters
+                    x, y, w, h, conf = max_conf_bbox
+
+                    x = (x + col) * cell_size
+                    x = float(min(1, max(0, x)))
+
+                    y = (y + row) * cell_size
+                    y = float(min(1, max(0, y)))
+
+                    w = float(min(1, max(0, w**2)))
+
+                    h = float(min(1, max(0, h**2)))
+
+                    conf = float(min(1, max(0, conf)))
+
+                    # Find class with the highest confidence score
+                    class_conf, class_index = cell[-20:].max(-1)
+                    class_conf = float(min(1, max(0, class_conf)))
+                    class_index = int(class_index)
+
+                    # Save prediction for current cell
+                    current_pred["bboxes"].append([x, y, w, h])
+                    current_pred["labels"].append(class_index)
+                    current_pred["class_scores"].append(class_conf)
+                    current_pred["bbox_scores"].append(conf)
+
+            prediction.append(current_pred)
+
+        return prediction
 
 
 class Loss(nn.Module):
