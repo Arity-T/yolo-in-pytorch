@@ -293,16 +293,18 @@ class Loss(nn.Module):
 
                 # Coordinates and size loss
                 loss += self.lambda_coord * F.mse_loss(
-                    pred_bbox[:4], torch.tensor([x, y, w, h]), reduction="sum"
+                    pred_bbox[:4],
+                    torch.tensor([x, y, w, h], dtype=torch.float),
+                    reduction="sum",
                 )
 
                 # Confidence loss
-                loss += F.mse_loss(pred_bbox[4], torch.tensor(1))
+                loss += F.mse_loss(pred_bbox[4], torch.tensor(1.0))
 
                 # Classification loss
                 loss += F.mse_loss(
                     current_pred[-20:],
-                    F.one_hot(torch.tensor(label), 20),
+                    F.one_hot(torch.tensor(label), 20).to(torch.float),
                     reduction="sum",
                 )
 
