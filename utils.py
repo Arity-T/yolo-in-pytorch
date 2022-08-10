@@ -44,9 +44,11 @@ def bbox_to_corners(bbox, img_width, img_height):
 
 
 def img_to_numpy(img):
-    """Converts img to opencv and matplotlib compitable format."""
+    """Converts copy of img to opencv and matplotlib compitable format."""
     if isinstance(img, torch.Tensor):
-        img = img.cpu().detach().numpy()
+        img = img.cpu().detach().clone().numpy()
+    else:
+        img = img.copy()
 
     if img.max() <= 1:
         img *= 255
@@ -54,9 +56,10 @@ def img_to_numpy(img):
     img = img.astype(np.uint8).squeeze()
 
     if img.shape[0] == 3:
-        img = img.transpose(1, 2, 0)
+        # OpenCV needs a contiguous array
+        img = np.ascontiguousarray(img.transpose(1, 2, 0))
 
-    return img.astype(np.uint8)
+    return img
 
 
 def to_color(obj):
@@ -96,7 +99,7 @@ def put_text(img, text, x, y, bg_color, left_top_origin=True):
 
 def draw_bboxes(img, bboxes, labels=None):
     """Draws bounding boxes and labels on copy of the input image and returns it."""
-    img = img_to_numpy(img).copy()
+    img = img_to_numpy(img)
 
     for i, bbox in enumerate(bboxes):
         bbox_color = to_color(labels[i]) if labels else to_color(bbox)
