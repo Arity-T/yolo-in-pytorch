@@ -377,9 +377,9 @@ class Loss(nn.Module):
             # No object loss
             confidence_preds = pred[ex_i][..., [4, 9]]
             # Don't count no object loss for cells with objects
-            confidence_preds[cells_with_obj] *= 0
+            confidence_preds[tuple(zip(*cells_with_obj))] *= 0
             loss += self.lambda_noobj * F.mse_loss(
                 confidence_preds, torch.zeros_like(confidence_preds), reduction="sum"
             )
 
-        return loss
+        return loss / len(gt)
