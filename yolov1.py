@@ -222,7 +222,6 @@ class Model(nn.Module):
             nn.LeakyReLU(0.1),
             nn.Dropout(0.5),
             nn.Linear(4096, grid_size * grid_size * self.preds_per_cell),
-            nn.LeakyReLU(0.1),
         )
 
     def forward(self, batch):
