@@ -350,8 +350,10 @@ class Loss(nn.Module):
                 bbox1_iou = utils.iou(current_pred[:4], (x, y, w, h))
                 bbox2_iou = utils.iou(current_pred[5:9], (x, y, w, h))
 
-                pred_bbox = (
-                    current_pred[:5] if bbox1_iou > bbox2_iou else current_pred[5:10]
+                pred_bbox, pred_bbox_iou = (
+                    (current_pred[:5], bbox1_iou)
+                    if bbox1_iou > bbox2_iou
+                    else (current_pred[5:10], bbox2_iou)
                 )
 
                 # Coordinates and size loss
@@ -362,7 +364,10 @@ class Loss(nn.Module):
                 )
 
                 # Confidence loss
-                loss += F.mse_loss(pred_bbox[4], torch.tensor(1.0, device=pred.device))
+                loss += F.mse_loss(
+                    pred_bbox[4],
+                    torch.tensor(pred_bbox_iou, dtype=torch.float, device=pred.device),
+                )
 
                 # Classification loss
                 loss += F.mse_loss(
