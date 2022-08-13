@@ -201,8 +201,11 @@ class Model(nn.Module):
         """Creates YOLOv1 model.
 
         Args:
-            backbone (callable, optional): Backbone model. If not specified default
-                backbone will be used (see Figure 3 in paper for details).
+            backbone (callable, optional): Backbone model. Last two layers of the model
+                will be automatically replaced by adaptive average pooling and 1x1
+                convolution to match input size of fully connected layers. If not
+                specified, the default backbone will be used (see Figure 3 in paper for
+                architecture details).
             grid_size (int, optional): YOLO hyperparameter (see paper for details).
                 Defaults to 7.
             number_of_bboxes (int, optional): Number of bounding boxes to predict per
@@ -214,7 +217,10 @@ class Model(nn.Module):
         self.number_of_bboxes = number_of_bboxes
         self.preds_per_cell = number_of_bboxes * 5 + number_of_classes
 
-        self.backbone = backbone if backbone else Backbone()
+        if backbone:
+            self.set_backbone(backbone)
+        else:
+            self.backbone = Backbone()
 
         self.fc_layers = nn.Sequential(
             nn.Flatten(),
@@ -222,6 +228,18 @@ class Model(nn.Module):
             nn.LeakyReLU(0.1),
             nn.Dropout(0.5),
             nn.Linear(4096, grid_size * grid_size * self.preds_per_cell),
+        )
+
+    def set_backbone(self, model):
+        """Makes model compitable with fully connected layers and sets it as backbone."""
+        model = nn.Sequential(*list(model.children())[:-2])
+
+        output_channels = model(torch.zeros(1, 3, 448, 448)).shape[1]
+
+        self.backbone = nn.Sequential(
+            model,
+            nn.AdaptiveAvgPool2d(self.grid_size),
+            nn.Conv2d(output_channels, 1024, 1),
         )
 
     def forward(self, batch):
