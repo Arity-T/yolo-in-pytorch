@@ -129,25 +129,20 @@ def nms(predictions, threshold=0.5):
     """Non Max Suppression algorithm implementation.
 
     Args:
-        predictions (list of dicts): A list of dictionaries where each dictionary has
-            three required keys "bboxes", "labels" and "scores" (e.g. output of
-            yolov1.Model.predict method).
+        predictions (list): A list of predictions where each prediction is a list of
+            bounding boxes. Each bounding box is represented as a tuple that looks like
+            (x, y, w, h, class, class-specific confidence score, ...)
         threshold (float, optional): The overlap threshold for suppressing extra
             bounding boxes.
 
     Returns:
-        List of filtered bounding boxes represented as tuples that looks like
-            (score, label, x, y, w, h).
+        A list of filtered predictions in the same format as the input.
     """
     result = []
 
-    for pred in predictions:
-        bboxes = sorted(
-            zip(pred["scores"], pred["labels"], pred["bboxes"]),
-            key=lambda x: x[0],
-            reverse=True,
-        )
-        current_result = {"bboxes,"}
+    for bboxes in predictions:
+        bboxes = sorted(bboxes, key=lambda x: x[5])
+        result.append([])
 
         while bboxes:
             current_bbox = bboxes.pop()
@@ -155,10 +150,10 @@ def nms(predictions, threshold=0.5):
             bboxes = [
                 bbox
                 for bbox in bboxes
-                if current_bbox[1] != bbox[1]
-                or iou(current_bbox[2], bbox[2]) < threshold
+                if current_bbox[4] != bbox[4]
+                or iou(current_bbox[:4], bbox[:4]) < threshold
             ]
 
-            current_result.append(current_bbox)
+            result[-1].append(current_bbox)
 
     return result
