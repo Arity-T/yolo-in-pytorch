@@ -97,20 +97,68 @@ def put_text(img, text, x, y, bg_color, left_top_origin=True):
     return img
 
 
-def draw_bboxes(img, bboxes, labels=None, scores=None):
-    """Draws bounding boxes, labels and confidence scores on copy of the input image."""
+def draw_bboxes(img, bboxes, class_names=None):
+    """Draws bounding boxes on copy of the input image."""
     img = img_to_numpy(img)
 
-    for i, bbox in enumerate(bboxes):
-        bbox_color = to_color(labels[i]) if labels else to_color(bbox)
+    if not class_names:
+        class_names = open("voc_classes.txt").read().strip().split("\n")
 
-        x_min, y_min, x_max, y_max = bbox_to_corners(bbox, img.shape[1], img.shape[0])
+    for bbox in bboxes:
+        bbox_color = to_color(bbox[4]) if len(bbox) > 4 else to_color(bbox)
+
+        x_min, y_min, x_max, y_max = bbox_to_corners(
+            bbox[:4], img.shape[1], img.shape[0]
+        )
         cv2.rectangle(
             img, pt1=(x_min, y_min), pt2=(x_max, y_max), color=bbox_color, thickness=2
         )
 
-        if labels:
-            text = f"{labels[i]} {scores[i]:.2f}" if scores else labels[i]
+        if len(bbox) > 4:
+            text = (
+                class_names[bbox[4]]
+                + " "
+                + " ".join([str(round(score, 2)) for score in bbox[5:]])
+            )
             img = put_text(img, text, x_min, y_min, bbox_color)
 
     return img
+
+
+def nms(predictions, threshold=0.5):
+    """Non Max Suppression algorithm implementation.
+
+    Args:
+        predictions (list of dicts): A list of dictionaries where each dictionary has
+            three required keys "bboxes", "labels" and "scores" (e.g. output of
+            yolov1.Model.predict method).
+        threshold (float, optional): The overlap threshold for suppressing extra
+            bounding boxes.
+
+    Returns:
+        List of filtered bounding boxes represented as tuples that looks like
+            (score, label, x, y, w, h).
+    """
+    result = []
+
+    for pred in predictions:
+        bboxes = sorted(
+            zip(pred["scores"], pred["labels"], pred["bboxes"]),
+            key=lambda x: x[0],
+            reverse=True,
+        )
+        current_result = {"bboxes,"}
+
+        while bboxes:
+            current_bbox = bboxes.pop()
+
+            bboxes = [
+                bbox
+                for bbox in bboxes
+                if current_bbox[1] != bbox[1]
+                or iou(current_bbox[2], bbox[2]) < threshold
+            ]
+
+            current_result.append(current_bbox)
+
+    return result
