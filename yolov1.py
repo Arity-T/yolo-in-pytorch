@@ -249,26 +249,34 @@ class Model(nn.Module):
         return batch
 
     @torch.no_grad()
-    def predict(self, batch, threshold=0.5):
+    def predict(self, batch, threshold=0.25):
+        """Runs the model on given batch and decodes its output.
+
+        Args:
+            batch (torch.tensor): Batch of images.
+            threshold (float, optional): The minimum class-specific confidence score.
+                This score is the product of the cell's conditional class probability
+                and bounding box confidence (see paper for details). Defaults to 0.25.
+
+        Returns:
+            A list of predictions where each prediction is a list of bounding boxes.
+            Each bounding box is represented as a tuple that looks like
+            (x, y, w, h, class, class-specific confidence score, bbox confidence, class probability)
+        """
         self.eval()
         predicted_grids = self(batch)
 
         cell_size = 1 / self.grid_size
-        prediction = []
+        predictions = []
 
         for grid in predicted_grids:
-            current_pred = {
-                "bboxes": [],
-                "labels": [],
-                "class_scores": [],
-                "bbox_scores": [],
-            }
+            current_pred = []
 
             for row in range(grid.shape[0]):
                 for col in range(grid.shape[1]):
                     cell = grid[row, col]
 
-                    # Find prediction with the highest confidence
+                    # Find bbox with the highest confidence in current cell
                     max_conf_bbox = None
                     for bbox_i in range(self.number_of_bboxes):
                         if (
@@ -277,13 +285,20 @@ class Model(nn.Module):
                         ):
                             max_conf_bbox = cell[bbox_i * 5 : (bbox_i + 1) * 5]
 
-                    # Skip empty cells
-                    if max_conf_bbox[-1] < threshold:
-                        continue
+                    # Find class with the highest confidence score
+                    class_prob, class_index = cell[-20:].max(-1)
+                    class_prob = float(min(1, max(0, class_prob)))
+                    class_index = int(class_index)
 
                     # Normalize bounding box parameters
-                    x, y, w, h, conf = max_conf_bbox
+                    x, y, w, h, bbox_conf = max_conf_bbox
+                    bbox_conf = float(min(1, max(0, bbox_conf)))
 
+                    # Filtering bboxes by threshold
+                    if class_prob * bbox_conf < threshold:
+                        continue
+
+                    # Coordinates post-processing
                     x = (x + col) * cell_size
                     x = float(min(1, max(0, x)))
 
@@ -294,22 +309,15 @@ class Model(nn.Module):
 
                     h = float(min(1, max(0, h**2)))
 
-                    conf = float(min(1, max(0, conf)))
-
-                    # Find class with the highest confidence score
-                    class_conf, class_index = cell[-20:].max(-1)
-                    class_conf = float(min(1, max(0, class_conf)))
-                    class_index = int(class_index)
-
                     # Save prediction for current cell
-                    current_pred["bboxes"].append([x, y, w, h])
-                    current_pred["labels"].append(class_index)
-                    current_pred["class_scores"].append(class_conf)
-                    current_pred["bbox_scores"].append(conf)
+                    current_pred.append(
+                        (x, y, w, h)
+                        + (class_index, class_prob * bbox_conf, bbox_conf, class_prob)
+                    )
 
-            prediction.append(current_pred)
+            predictions.append(current_pred)
 
-        return prediction
+        return predictions
 
 
 class Loss(nn.Module):
