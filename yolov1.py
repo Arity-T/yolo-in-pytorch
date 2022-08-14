@@ -19,7 +19,7 @@ def read_annot_file(path):
         path (str): Path to the file.
 
     Returns:
-        A list of bboxes where each bbox is represented as a list that looks like
+        A list of bboxes where each bbox is represented as a tuple that looks like
         (x, y, w, h, class)
     """
     bboxes = []
@@ -28,7 +28,7 @@ def read_annot_file(path):
         for line in annot_file.read().strip().split("\n"):
             line = line.split()
             bboxes.append(
-                [float(bbox_param) for bbox_param in line[1:5]] + [int(line[0])]
+                tuple([float(bbox_param) for bbox_param in line[1:5]] + [int(line[0])])
             )
 
     return bboxes
@@ -340,7 +340,8 @@ class Loss(nn.Module):
 
         Args:
             pred (torch.tensor): Tensor predicted by the model.
-            gt (list of dicts): List of ground truth bboxes with labels.
+            gt (list): A list ground truth where each element is a list of bboxes. Each
+                bbox is represented as a tuple that looks like (x, y, w, h, class).
 
         Returns:
             torch.tensor: Tensor of size 1.
@@ -351,7 +352,7 @@ class Loss(nn.Module):
         for ex_i in range(len(gt)):
             cells_with_obj = []
 
-            for (x, y, w, h), label in zip(gt[ex_i]["bboxes"], gt[ex_i]["labels"]):
+            for x, y, w, h, class_index in gt[ex_i]:
                 # Find grid cell responsible for predicting current bbox
                 row, col = int(x // cell_size), int(y // cell_size)
 
@@ -397,7 +398,7 @@ class Loss(nn.Module):
                 # Classification loss
                 loss += F.mse_loss(
                     current_pred[-20:],
-                    F.one_hot(torch.tensor(label), 20).to(
+                    F.one_hot(torch.tensor(class_index), 20).to(
                         device=pred.device, dtype=torch.float
                     ),
                     reduction="sum",
