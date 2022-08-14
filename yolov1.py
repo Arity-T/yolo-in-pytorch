@@ -19,22 +19,23 @@ def read_annot_file(path):
         path (str): Path to the file.
 
     Returns:
-        tuple: (list of class labels, list of bboxes)
+        A list of bboxes where each bbox is represented as a list that looks like
+        (x, y, w, h, class)
     """
-    labels = []
     bboxes = []
 
     with open(path) as annot_file:
         for line in annot_file.read().strip().split("\n"):
             line = line.split()
-            labels.append(int(line[0]))
-            bboxes.append([float(bbox_param) for bbox_param in line[1:5]])
+            bboxes.append(
+                [float(bbox_param) for bbox_param in line[1:5]] + [int(line[0])]
+            )
 
-    return labels, bboxes
+    return bboxes
 
 
 def collate_fn(batch):
-    """Pass this function as collate_fn argument of the DataLoader"""
+    """Pass this function as collate_fn argument of the DataLoader."""
     images, annotations = zip(*batch)
     return default_collate(images), annotations
 
@@ -56,8 +57,7 @@ class Dataset(BaseDataset):
                 annotations (see convert_voc_labels.py).
             augmentations (callable, optional): Albumentations augmentation pipeline or
                 custom function/transform with same interface. When using albumentations
-                Compose, pass albumentations.BboxParams("yolo", label_fields=["labels"]))
-                as bbox_params argument of Compose.
+                Compose, pass albumentations.BboxParams("yolo") as bbox_params argument.
             transforms (callable, optional): A function/transform that takes in an numpy
                 array and returns a transformed version.
             grid_size (int, optional): YOLO hyperparameter (see paper for details).
@@ -110,22 +110,21 @@ class Dataset(BaseDataset):
 
         # Read annotations
         if self.annotations:
-            labels, bboxes = self.annotations[index]
+            bboxes = self.annotations[index]
         else:
-            labels, bboxes = read_annot_file(self.annot_pathes[index])
+            bboxes = read_annot_file(self.annot_pathes[index])
 
         # Apply augmentations
         if self.augmentations:
-            augmented = self.augmentations(image=img, bboxes=bboxes, labels=labels)
+            augmented = self.augmentations(image=img, bboxes=bboxes)
             img = augmented["image"]
             bboxes = augmented["bboxes"]
-            labels = augmented["labels"]
 
         # Apply transforms
         if self.transforms:
             img = self.transforms(img)
 
-        return img, {"bboxes": bboxes, "labels": labels}
+        return img, bboxes
 
 
 def add_activations(model, activation, *args, **kwargs):
