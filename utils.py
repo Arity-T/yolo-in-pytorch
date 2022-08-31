@@ -157,3 +157,90 @@ def nms(predictions, threshold=0.5):
             result[-1].append(current_bbox)
 
     return result
+
+
+def compute_map(predictions, annots, iou_threshold=0.5, number_of_classes=20):
+    """Computes mAP metric used in PASCAL VOC dataset.
+
+    The official documentation explaining PASCAL VOC criteria for object detection
+    metrics can be accessed by this link
+    http://host.robots.ox.ac.uk/pascal/VOC/voc2012/htmldoc/devkit_doc.html#SECTION00054000000000000000
+
+    Python implementation https://github.com/Cartucho/mAP
+
+    Args:
+        predictions (list): A list of predictions where each prediction is a list of
+            bounding boxes. Each bbox is represented as a tuple that looks like
+            (x, y, w, h, class, score).
+        annots (list): A list ground truth where each element is a list of bboxes. Each
+            bbox is represented as a tuple that looks like (x, y, w, h, class).
+        iou_threshold (float, optional): Consider a prediction as True Positive only
+            when IOU with ground truth greater than this threshold. Defaults to 0.5.
+        number_of_classes (int, optional): Number of classes in dataset.
+
+    Returns:
+        float: Calculated mAP value.
+    """
+    bboxes_by_class = [[] for _ in range(number_of_classes)]
+    num_of_bboxes_by_class = [0] * number_of_classes
+
+    # For cases when not all classes are presented in test data
+    is_class_presented = [0] * number_of_classes
+
+    # Iterate over images and save true positives
+    for pred_bboxes, gt_bboxes in zip(predictions, annots):
+        pred_bboxes = sorted(pred_bboxes, key=lambda x: x[5], reverse=True)
+
+        for gt_bbox in gt_bboxes:
+            is_class_presented[gt_bbox[4]] = 1
+            num_of_bboxes_by_class[gt_bbox[4]] += 1
+
+            for pred_bbox in pred_bboxes:
+                # Compare class and IOU of predicted and ground truth bboxes
+                if (
+                    gt_bbox[4] == pred_bbox[4]
+                    and iou(gt_bbox[:4], pred_bbox[:4]) >= iou_threshold
+                ):
+                    bboxes_by_class[pred_bbox[4]].append([pred_bbox[5], True])
+                    pred_bboxes.remove(pred_bbox)
+                    break
+
+        # Consider the remaining predictions as false positives
+        for pred_bbox in pred_bboxes:
+            bboxes_by_class[pred_bbox[4]].append([pred_bbox[5], False])
+
+    # Calculate average precision (AP) values for all classes
+    ap_by_class = []
+
+    for pred_list, num_of_gt in zip(bboxes_by_class, num_of_bboxes_by_class):
+        average_precision = 0
+
+        last_precision = 0
+        last_recall = 0
+
+        recall = 0
+
+        true_positives_count = 0
+
+        for i, (_, is_true_positive) in enumerate(
+            sorted(pred_list, key=lambda x: x[0], reverse=True)
+        ):
+            true_positives_count += is_true_positive
+            precision = true_positives_count / (i + 1)
+
+            if num_of_gt == 0:
+                break
+
+            recall = true_positives_count / num_of_gt
+
+            if precision < last_precision:
+                average_precision += (recall - last_recall) * last_precision
+                last_recall = recall
+
+            last_precision = precision
+
+        average_precision += (recall - last_recall) * last_precision
+
+        ap_by_class.append(average_precision)
+
+    return sum(ap_by_class) / sum(is_class_presented), ap_by_class
