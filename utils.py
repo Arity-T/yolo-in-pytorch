@@ -189,6 +189,7 @@ def compute_map(predictions, annots, iou_threshold=0.5, number_of_classes=20):
 
     # Iterate over images and save true positives
     for pred_bboxes, gt_bboxes in zip(predictions, annots):
+        # Sort predicted bboxes by confidence score in descending order
         pred_bboxes = sorted(pred_bboxes, key=lambda x: x[5], reverse=True)
 
         for gt_bbox in gt_bboxes:
@@ -212,7 +213,12 @@ def compute_map(predictions, annots, iou_threshold=0.5, number_of_classes=20):
     # Calculate average precision (AP) values for all classes
     ap_by_class = []
 
+    # Iterate over classes
     for pred_list, num_of_gt in zip(bboxes_by_class, num_of_bboxes_by_class):
+        if num_of_gt == 0:
+            ap_by_class.append(0)
+            continue
+
         average_precision = 0
 
         last_precision = 0
@@ -223,14 +229,11 @@ def compute_map(predictions, annots, iou_threshold=0.5, number_of_classes=20):
         true_positives_count = 0
 
         for i, (_, is_true_positive) in enumerate(
+            # Sort predicted bboxes by confidence score in descending order
             sorted(pred_list, key=lambda x: x[0], reverse=True)
         ):
             true_positives_count += is_true_positive
             precision = true_positives_count / (i + 1)
-
-            if num_of_gt == 0:
-                break
-
             recall = true_positives_count / num_of_gt
 
             if precision < last_precision:
