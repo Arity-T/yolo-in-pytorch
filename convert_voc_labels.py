@@ -79,7 +79,8 @@ if __name__ == "__main__":
     with open("voc_classes.txt") as f:
         classes = f.read().strip().split()
 
-    for year, image_set in tqdm(image_sets):
+    for year, image_set in image_sets:
+        print("Preparing a set of images:", year, image_set)
         os.makedirs(f"VOCdevkit/VOC{year}/labels/", exist_ok=True)
 
         with open(f"VOCdevkit/VOC{year}/ImageSets/Main/{image_set}.txt") as f:
@@ -91,3 +92,5 @@ if __name__ == "__main__":
                     f"VOCdevkit/VOC{year}/JPEGImages/{image_id}.jpg VOCdevkit/VOC{year}/labels/{image_id}.txt\n"
                 )
                 convert_annotation(year, image_id)
+
+        print("Done!")
