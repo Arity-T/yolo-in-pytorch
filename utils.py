@@ -125,15 +125,15 @@ def draw_bboxes(img, bboxes, class_names=None):
     return img
 
 
-def nms(predictions, threshold=0.5):
+def nms(predictions, iou_threshold=0.5):
     """Non Max Suppression algorithm implementation.
 
     Args:
         predictions (list): A list of predictions where each prediction is a list of
             bounding boxes. Each bounding box is represented as a tuple that looks like
             (x, y, w, h, class, class-specific confidence score, ...)
-        threshold (float, optional): The overlap threshold for suppressing extra
-            bounding boxes.
+        iou_threshold (float, optional): The iou threshold for suppressing extra
+            bounding boxes. A lower threshold means stricter filtering. Defaults to 0.5.
 
     Returns:
         A list of filtered predictions in the same format as the input.
@@ -151,7 +151,7 @@ def nms(predictions, threshold=0.5):
                 bbox
                 for bbox in bboxes
                 if current_bbox[4] != bbox[4]
-                or iou(current_bbox[:4], bbox[:4]) < threshold
+                or iou(current_bbox[:4], bbox[:4]) < iou_threshold
             ]
 
             result[-1].append(current_bbox)
@@ -176,7 +176,7 @@ def compute_map(predictions, annots, iou_threshold=0.5, number_of_classes=20):
             bbox is represented as a tuple that looks like (x, y, w, h, class).
         iou_threshold (float, optional): Consider a prediction as True Positive only
             when IOU with ground truth greater than this threshold. Defaults to 0.5.
-        number_of_classes (int, optional): Number of classes in dataset.
+        number_of_classes (int, optional): Number of classes in dataset. Defaults to 20.
 
     Returns:
         float: Calculated mAP value.
