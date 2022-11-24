@@ -248,7 +248,7 @@ class Model(nn.Module):
         return batch
 
     @torch.no_grad()
-    def predict(self, batch, threshold=0.25):
+    def predict(self, batch, threshold=0.25, iou_threshold=0.5):
         """Runs the model on given batch and decodes its output.
 
         Args:
@@ -256,6 +256,9 @@ class Model(nn.Module):
             threshold (float, optional): The minimum class-specific confidence score.
                 This score is the product of the cell's conditional class probability
                 and bounding box confidence (see paper for details). Defaults to 0.25.
+            iou_threshold (float, optional): The iou threshold for suppressing extra
+                bounding boxes using Non-Maximum Supression algorithm. A lower threshold
+                means stricter filtering. Defaults to 0.5.
 
         Returns:
             A list of predictions where each prediction is a list of bounding boxes.
@@ -316,7 +319,7 @@ class Model(nn.Module):
 
             predictions.append(current_pred)
 
-        return predictions
+        return utils.nms(predictions, iou_threshold=0.5)
 
 
 class Loss(nn.Module):
