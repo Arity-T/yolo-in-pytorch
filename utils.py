@@ -1,6 +1,7 @@
 from hashlib import md5
 
 import cv2
+import matplotlib.pyplot as plt
 import numpy as np
 import torch
 
@@ -123,6 +124,19 @@ def draw_bboxes(img, bboxes, class_names=None):
             img = put_text(img, text, x_min, y_min, bbox_color)
 
     return img
+
+
+def show_examples(images, predictions, ground_truths, img_size=8):
+    _, axes = plt.subplots(
+        len(images), 2, figsize=(2 * img_size, img_size * len(images))
+    )
+
+    for ax, img, pred, gt in zip(axes, images, predictions, ground_truths):
+        ax[0].imshow(draw_bboxes(img, pred))
+        ax[0].set_title("Prediction (with NMS)")
+
+        ax[1].imshow(draw_bboxes(img, gt))
+        ax[1].set_title("Ground truth")
 
 
 def nms(predictions, iou_threshold=0.5):
