@@ -127,6 +127,7 @@ def draw_bboxes(img, bboxes, class_names=None):
 
 
 def show_examples(images, predictions, ground_truths, img_size=8):
+    """Shows a grid of images with drawn predicted and ground truth bounding boxes."""
     _, axes = plt.subplots(
         len(images), 2, figsize=(2 * img_size, img_size * len(images))
     )
