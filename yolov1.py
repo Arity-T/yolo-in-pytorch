@@ -4,6 +4,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import Dataset as BaseDataset
 from torch.utils.data import default_collate
+from torchvision.transforms import ToTensor
 from tqdm import tqdm
 
 import utils
@@ -45,7 +46,7 @@ class Dataset(BaseDataset):
         self,
         img_sets,
         augmentations=None,
-        transforms=None,
+        transforms=ToTensor(),
         grid_size=7,
         number_of_classes=20,
         read_annots_once=True,
@@ -59,7 +60,8 @@ class Dataset(BaseDataset):
                 custom function/transform with same interface. When using albumentations
                 Compose, pass albumentations.BboxParams("yolo") as bbox_params argument.
             transforms (callable, optional): A function/transform that takes in an numpy
-                array and returns a transformed version.
+                array and returns a transformed version. Defaults to
+                torchvision.transforms.ToTensor().
             grid_size (int, optional): YOLO hyperparameter (see paper for details).
                 Defaults to 7.
             number_of_classes (int, optional): Number of classes in dataset.
