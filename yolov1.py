@@ -1,3 +1,4 @@
+import albumentations as A
 import cv2
 import torch
 import torch.nn as nn
@@ -41,11 +42,16 @@ def collate_fn(batch):
     return default_collate(images), annotations
 
 
+default_resize = A.Compose(
+    [A.Resize(448, 448)], bbox_params=A.BboxParams(format="yolo")
+)
+
+
 class Dataset(BaseDataset):
     def __init__(
         self,
         img_sets,
-        augmentations=None,
+        augmentations=default_resize,
         transforms=ToTensor(),
         grid_size=7,
         number_of_classes=20,
